@@ -1,5 +1,3 @@
-
-
 from fastapi import APIRouter, Depends, status
 from fastapi_jwt_auth import AuthJWT
 from fastapi.encoders import jsonable_encoder
@@ -92,4 +90,34 @@ async def list_all_order(Authorize: AuthJWT = Depends()):
         return jsonable_encoder(custom_data)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only SuperAdmin can see all orders")
+
+
+@order_routes.get('/{id}')
+async def get_order_by_id(id: int, Authorize: AuthJWT = Depends()):
+    try:
+        Authorize.jwt_required()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Only SuperAdmin can see all orders")
+
+    user = Authorize.get_jwt_subject()
+    current_user = session.query(User).filter(User.username == user).first()
+
+    if current_user.is_staff:
+        order = session.query(Order).filter(Order.id == id).first()
+        custom_order = {
+            'id': order.id,
+            'user': {
+                'id': order.user.id,
+                'username': order.user.username,
+                'email': order.user.email
+            },
+            'product_id': order.product_id,
+            'quantity': order.quantity,
+            'order_statuses': order.order_statuses.value,
+        }
+
+        return jsonable_encoder(order)
+    else:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only SuperAdmin is Allowed to this request")
+
 

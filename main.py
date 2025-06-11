@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from auth_routes import auth_routes
 from order_routes import order_routes
+from product_routes import product_router
 from fastapi_jwt_auth import AuthJWT
 from schemas import Settings, LoginModel
 
@@ -14,6 +15,7 @@ def get_config():
 
 app.include_router(auth_routes)
 app.include_router(order_routes)
+app.include_router(product_router)
 
 
 @app.get("/")

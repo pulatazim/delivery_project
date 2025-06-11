@@ -57,3 +57,18 @@ class OrderStatusModel(BaseModel):
             }
         }
 
+
+class ProductModel(BaseModel):
+    id: Optional[int]
+    name: str
+    price: int
+
+    class Config:
+        orm_mode = True
+        schema_extra = {
+            "example": {
+                'name': 'uzbek plov',
+                'price': 30000
+            }
+        }
+
