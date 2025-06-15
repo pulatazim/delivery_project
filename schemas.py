@@ -32,10 +32,10 @@ class LoginModel(BaseModel):
 
 
 class OrderModel(BaseModel):
-    quantity: str
+    quantity: int
     order_status: Optional[str] = "PENDING"
     user_id: Optional[int]
-    product_id: Optional[int]
+    product_id: int
 
     class Config:
         orm_mode = True

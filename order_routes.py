@@ -39,7 +39,7 @@ async def make_order(order: OrderModel, Authorize: AuthJWT = Depends()):
 
     new_order = Order(
         quantity=order.quantity,
-        # product = order.product_id
+        product_id=order.product_id
     )
     new_order.user = user
     session.add(new_order)
@@ -50,8 +50,14 @@ async def make_order(order: OrderModel, Authorize: AuthJWT = Depends()):
         "message": "Order created successfully",
         "data": {
             "id": new_order.id,
+            "product": {
+                "id": new_order.product.id,
+                "name": new_order.product.name,
+                "price": new_order.product.price,
+            },
             "quantity": new_order.quantity,
-            "order_statuses": new_order.order_statuses,
+            "order_statuses": new_order.order_statuses.value,
+            "total_price": new_order.quantity * new_order.product.price
         }
     }
 
@@ -59,7 +65,7 @@ async def make_order(order: OrderModel, Authorize: AuthJWT = Depends()):
     return jsonable_encoder(response)
 
 
-@order_routes.get('/list')
+@order_routes.get('/list', status_code=status.HTTP_200_OK)
 async def list_all_order(Authorize: AuthJWT = Depends()):
 
     try:
@@ -80,19 +86,26 @@ async def list_all_order(Authorize: AuthJWT = Depends()):
                     'username': order.user.username,
                     'email': order.user.email
                 },
-                'product_id': order.product_id,
+                'product': {
+                    "id": order.product.id if order.product else None,
+                    "name": order.product.name if order.product else None,
+                    "price": order.product.price if order.product else None,
+                },
                 'quantity': order.quantity,
                 'order_statuses': order.order_statuses.value,
+                "total_price": order.quantity * order.product.price if order.product else 0
             }
             for order in orders
         ]
+
+
 
         return jsonable_encoder(custom_data)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only SuperAdmin can see all orders")
 
 
-@order_routes.get('/{id}')
+@order_routes.get('/{id}', status_code=status.HTTP_200_OK)
 async def get_order_by_id(id: int, Authorize: AuthJWT = Depends()):
     try:
         Authorize.jwt_required()
@@ -111,13 +124,84 @@ async def get_order_by_id(id: int, Authorize: AuthJWT = Depends()):
                 'username': order.user.username,
                 'email': order.user.email
             },
-            'product_id': order.product_id,
+            'product': {
+                "id": order.product.id,
+                "name": order.product.name,
+                "price": order.product.price,
+            },
             'quantity': order.quantity,
             'order_statuses': order.order_statuses.value,
+            "total_price": order.quantity * order.product.price
         }
 
-        return jsonable_encoder(order)
+        return jsonable_encoder(custom_order)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only SuperAdmin is Allowed to this request")
 
+
+@order_routes.get('/user/orders', status_code=status.HTTP_200_OK)
+async def get_user_orders(Authorize: AuthJWT = Depends()):
+    try:
+        Authorize.jwt_required()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Enter valid access token")
+
+    username = Authorize.get_jwt_subject()
+    print("username", username)
+    user = session.query(User).filter(User.username == username).first()
+
+    custom_data = [
+        {
+            'id': order.id,
+            'user': {
+                'id': order.user.id,
+                'username': order.user.username,
+                'email': order.user.email
+            },
+            'product': {
+                'id': order.product.id,
+                'name': order.product.name,
+                'price': order.product.price,
+            },
+            'quantity': order.quantity,
+            'order_statuses': order.order_statuses.value,
+            'total_price': order.quantity * order.product.price
+        }
+        for order in user.orders
+    ]
+    return jsonable_encoder(custom_data)
+
+
+@order_routes.get('/user/order/{id}', status_code=status.HTTP_200_OK)
+async def get_user_by_id(id:int, Authorize: AuthJWT = Depends()):
+    try:
+        Authorize.jwt_required()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Enter valid access token")
+
+    username = Authorize.get_jwt_subject()
+    current_user = session.query(User).filter(User.username == username).first()
+    order = session.query(Order).filter(Order.id == id, Order.user == current_user).first()
+    # orders = current_user.orders
+
+    if order:
+        order_data = {
+            'id': order.id,
+            'user': {
+                'id': order.user.id,
+                'username': order.user.username,
+                'email': order.user.email,
+            },
+            'product': {
+                'id': order.product.id,
+                'name': order.product.name,
+                'price': order.product.price,
+            },
+            'quantity': order.quantity,
+            'order_statuses': order.order_statuses.value,
+            'total_price': order.quantity * order.product.price,
+        }
+        return jsonable_encoder(order_data)
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
