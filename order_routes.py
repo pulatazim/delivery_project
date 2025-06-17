@@ -269,6 +269,38 @@ async def update_or_status(id: int, order: OrderStatusModel, Authorize: AuthJWT 
         return jsonable_encoder(custom_response)
 
 
+@order_routes.delete('/{id}/delete', status_code=status.HTTP_204_NO_CONTENT)
+async  def order_delete(id: int, Authorize: AuthJWT = Depends()):
+    try:
+        Authorize.jwt_required()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Enter valid access token")
+
+    username = Authorize.get_jwt_subject()
+    user = session.query(User).filter(User.username == username).first()
+    order = session.query(Order).filter(Order.id == id).first()
+
+    if order.user != user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Kechirasiz, boshqalarning orderini o'chira olmaysiz!")
+
+    if order.order_statuses != "PENDING":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Kechirasiz, bu orderni o'chira omaysiz!")
+
+    session.delete(order)
+    session.commit()
+
+    custom_response = {
+        "success": True,
+        "code": 200,
+        "message": "Order deleted successfully!",
+        "data": None
+    }
+
+
+
+
 
 
 
