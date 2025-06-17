@@ -205,3 +205,71 @@ async def get_user_by_id(id:int, Authorize: AuthJWT = Depends()):
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
+
+@order_routes.put('/{id}/update', status_code=status.HTTP_200_OK)
+async def update_order(id: int, order: OrderModel, Authorize: AuthJWT=Depends()):
+    try:
+        Authorize.jwt_required()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Enter valid access token")
+
+    username = Authorize.get_jwt_subject()
+    user = session.query(User).filter(User.username == username).first()
+    order_to_update = session.query(Order).filter(Order.id == id).first()
+
+    if not order_to_update:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+
+    if order_to_update.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Kechirasiz, siz boshqalarning buyurtmasini o'zgartira olmaysiz!")
+
+    order_to_update.quantity = order.quantity
+    order_to_update.product_id = order.product_id
+    session.commit()
+
+    custom_response = {
+        "success": True,
+        "code": 200,
+        "messages": "Sizning buyurtmangiz muvaffaqiyatli o'zgartirlildi!",
+        "data": {
+            "id": order_to_update.id,
+            "quantity": order.quantity,
+            "product": order.product_id,
+            "order_statuses": order.order_status
+        }
+    }
+    return jsonable_encoder(custom_response)
+
+
+@order_routes.patch('/{id}/update-status', status_code=status.HTTP_200_OK)
+async def update_or_status(id: int, order: OrderStatusModel, Authorize: AuthJWT = Depends()):
+    try:
+        Authorize.jwt_required()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Enter valid access token")
+
+    username = Authorize.get_jwt_subject()
+    user = session.query(User).filter(User.username == username).first()
+
+    if user.is_staff:
+        order_to_update = session.query(Order).filter(Order.id == id).first()
+        order_to_update.order_statuses = order.order_statuses
+        session.commit()
+
+        custom_response = {
+            "success": True,
+            "code": 200,
+            "message": "User order is successfully updated!",
+            "data": {
+                "id": order_to_update.id,
+                "order_status": order_to_update.order_statuses
+            }
+        }
+        return jsonable_encoder(custom_response)
+
+
+
+
+
+

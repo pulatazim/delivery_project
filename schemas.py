@@ -47,7 +47,7 @@ class OrderModel(BaseModel):
 
 
 class OrderStatusModel(BaseModel):
-    oder_status: Optional[str] = "PENDING"
+    order_statuses: Optional[str] = "PENDING"
 
     class Config:
         orm_mode = True
